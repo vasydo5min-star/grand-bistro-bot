@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Grand Bistro</title>
+
+  <!-- Официальный скрипт Telegram Web App -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- Tailwind CSS через CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Элегантный шрифт для заголовков (есть запасной serif) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #14100d;        /* основной фон */
+      --card: #1e1813;      /* карточки */
+      --line: #332920;      /* границы */
+      --gold: #c9a45c;      /* акцент */
+      --gold-dark: #a8853f;
+      --text: #f3ebe0;
+      --muted: #a39482;
+    }
+    body { background: var(--bg); color: var(--text); -webkit-tap-highlight-color: transparent; }
+    .serif { font-family: "Playfair Display", Georgia, serif; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { scrollbar-width: none; }
+    .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 14px); }
+    /* Поля ввода в тёмной теме */
+    .field {
+      width: 100%; background: #261f18; border: 1px solid var(--line); color: var(--text);
+      border-radius: 14px; padding: 12px 16px; outline: none; font-size: 16px;
+    }
+    .field:focus { border-color: var(--gold); }
+    .field::placeholder { color: #75675a; }
+    select.field { appearance: none; }
+  </style>
+</head>
+
+<body class="antialiased pb-36">
+
+  <!-- ==================== ШАПКА ==================== -->
+  <header class="px-5 pt-6 pb-4 flex items-start justify-between"
+          style="background: radial-gradient(120% 100% at 0% 0%, #2c2118 0%, var(--bg) 70%);">
+    <div>
+      <h1 class="serif text-3xl font-bold" style="color: var(--gold);">Grand Bistro 🍷</h1>
+      <p class="text-xs tracking-[0.25em] uppercase mt-1" style="color: var(--muted);">Ресторан · Кухня · Вино</p>
+    </div>
+    <!-- Кнопка информации о заведении -->
+    <button id="infoBtn" aria-label="О ресторане"
+            class="w-10 h-10 rounded-full flex items-center justify-center text-lg font-serif italic border"
+            style="border-color: var(--gold); color: var(--gold);">i</button>
+  </header>
+
+  <!-- ==================== ВКЛАДКИ КАТЕГОРИЙ ==================== -->
+  <nav id="tabs" class="sticky top-0 z-20 px-5 py-3 flex gap-2 overflow-x-auto no-scrollbar backdrop-blur"
+       style="background: rgba(20,16,13,0.92);"></nav>
+
+  <!-- ==================== ВИТРИНА БЛЮД ==================== -->
+  <main id="menu" class="px-5 pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4"></main>
+
+  <!-- ==================== ПЛАВАЮЩАЯ КОРЗИНА ==================== -->
+  <div id="cartBar"
+       class="fixed bottom-0 inset-x-0 z-30 px-5 pt-3 safe-bottom transition-transform duration-300 translate-y-full border-t"
+       style="background: #1a1410; border-color: var(--line); box-shadow: 0 -8px 30px rgba(0,0,0,.5);">
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <div class="text-xs" style="color: var(--muted);">Ваш заказ · <span id="cartCount">0</span> поз.</div>
+        <div class="serif text-2xl font-bold"><span id="cartTotal">0</span> ₽</div>
+      </div>
+      <button id="checkoutBtn" class="rounded-2xl px-5 py-3 font-semibold text-sm active:opacity-80"
+              style="background: linear-gradient(135deg, var(--gold), var(--gold-dark)); color: #1a1208;">
+        Перейти к оформлению
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== О ЗАВЕДЕНИИ ==================== -->
+  <div id="infoModal" class="fixed inset-0 z-50 hidden">
+    <div id="infoBackdrop" class="absolute inset-0 bg-black/70"></div>
+    <div class="absolute bottom-0 inset-x-0 rounded-t-3xl p-6 safe-bottom"
+         style="background: var(--card); border-top: 1px solid var(--gold-dark);">
+      <h2 class="serif text-2xl font-bold mb-3" style="color: var(--gold);">Grand Bistro</h2>
+      <p class="text-sm mb-4" style="color: var(--muted);">
+        Уютный ресторан европейской кухни. Сезонные продукты, авторская подача и тщательно подобранная винная карта.
+      </p>
+      <ul class="space-y-2 text-sm">
+        <li>📍 г. Москва, ул. Примерная, 10</li>
+        <li>🕒 Ежедневно с 12:00 до 23:00</li>
+        <li>📞 +7 (495) 123-45-67</li>
+        <li>🚗 Доставка по городу: 60–90 минут</li>
+      </ul>
+      <button id="infoClose" class="w-full mt-5 py-3 rounded-2xl font-semibold border"
+              style="border-color: var(--gold); color: var(--gold);">Закрыть</button>
+    </div>
+  </div>
+
+  <!-- ==================== МОДАЛЬНОЕ ОКНО ОФОРМЛЕНИЯ ==================== -->
+  <div id="modal" class="fixed inset-0 z-50 hidden">
+    <div id="modalBackdrop" class="absolute inset-0 bg-black/70"></div>
+
+    <div class="absolute bottom-0 inset-x-0 rounded-t-3xl max-h-[92vh] overflow-y-auto safe-bottom"
+         style="background: var(--card); border-top: 1px solid var(--gold-dark);">
+      <form id="orderForm" class="p-5 space-y-4" novalidate>
+        <div class="flex items-center justify-between">
+          <h2 class="serif text-xl font-bold" style="color: var(--gold);">Оформление заказа</h2>
+          <button type="button" id="closeModal" class="text-3xl leading-none px-2" style="color: var(--muted);">&times;</button>
+        </div>
+
+        <!-- Переключатель типа заказа -->
+        <div class="grid grid-cols-2 gap-1 p-1 rounded-2xl" style="background: #261f18;">
+          <button type="button" data-type="delivery" class="type-btn py-2.5 rounded-xl text-sm font-semibold transition-colors">Доставка</button>
+          <button type="button" data-type="table" class="type-btn py-2.5 rounded-xl text-sm font-semibold transition-colors">В ресторане</button>
+        </div>
+
+        <div>
+          <label class="block text-xs mb-1 uppercase tracking-wider" style="color: var(--muted);" for="name">Имя</label>
+          <input id="name" type="text" autocomplete="name" placeholder="Как к вам обращаться" class="field" />
+        </div>
+
+        <div>
+          <label class="block text-xs mb-1 uppercase tracking-wider" style="color: var(--muted);" for="phone">Телефон</label>
+          <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 (900) 123-45-67" class="field" />
+        </div>
+
+        <!-- Динамическое поле: адрес (доставка) -->
+        <div id="addressBox">
+          <label class="block text-xs mb-1 uppercase tracking-wider" style="color: var(--muted);" for="address">Адрес доставки</label>
+          <input id="address" type="text" autocomplete="street-address" placeholder="Улица, дом, квартира" class="field" />
+        </div>
+
+        <!-- Динамическое поле: столик (в ресторане) -->
+        <div id="tableBox" class="hidden">
+          <label class="block text-xs mb-1 uppercase tracking-wider" style="color: var(--muted);" for="table">Номер вашего столика</label>
+          <select id="table" class="field"></select>
+        </div>
+
+        <p id="formError" class="text-sm hidden" style="color: #ff7b72;"></p>
+
+        <div class="flex items-center justify-between pt-1">
+          <span style="color: var(--muted);">Итого</span>
+          <span class="serif text-2xl font-bold"><span id="modalTotal">0</span> ₽</span>
+        </div>
+
+        <button type="submit" class="w-full py-3.5 rounded-2xl font-semibold active:opacity-80"
+                style="background: linear-gradient(135deg, var(--gold), var(--gold-dark)); color: #1a1208;">
+          Отправить заказ в ресторан
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // ============================================================
+    // 1. ИНИЦИАЛИЗАЦИЯ TELEGRAM WEB APP
+    // ============================================================
+    const tg = window.Telegram.WebApp;
+    tg.ready();    // приложение загружено
+    tg.expand();   // раскрываем на весь экран
+    // Красим системные панели Telegram под тему ресторана
+    try { tg.setHeaderColor("#14100d"); tg.setBackgroundColor("#14100d"); } catch (e) {}
+
+    // ============================================================
+    // 2. ДАННЫЕ МЕНЮ
+    // ============================================================
+    const CATEGORIES = [
+      { id: "starters", title: "Закуски" },
+      { id: "main",     title: "Горячее" },
+      { id: "desserts", title: "Десерты" },
+      { id: "drinks",   title: "Напитки" },
+    ];
+
+    // emoji + градиент выступают заглушкой вместо фото
+    const MENU = [
+      { id: 1, cat: "starters", name: "Салат Капрезе",        desc: "Томаты бифштекс, буррата, базилик, оливковое масло, бальзамик", price: 690,  emoji: "🍅", grad: "#7a2a22, #3a1612" },
+      { id: 2, cat: "starters", name: "Тартар из говядины",   desc: "Мраморная говядина, каперсы, желток, дижонская горчица, гренки", price: 890,  emoji: "🥩", grad: "#6b2230, #2e1017" },
+
+      { id: 3, cat: "main",     name: "Стейк Рибай",          desc: "Мраморная говядина 300 г, розмарин, чесночное масло, овощи гриль", price: 1900, emoji: "🥩", grad: "#5c3a1e, #2a1a0c" },
+      { id: 4, cat: "main",     name: "Утиная грудка",        desc: "С вишнёвым соусом, пюре из сельдерея, молодой шпинат", price: 1350, emoji: "🍽️", grad: "#4a2b3a, #20121a" },
+
+      { id: 5, cat: "desserts", name: "Тирамису",             desc: "Маскарпоне, савоярди, эспрессо, какао, ликёр амаретто", price: 450,  emoji: "🍰", grad: "#5a4630, #2a2014" },
+      { id: 6, cat: "desserts", name: "Крем-брюле",           desc: "Ваниль бурбон, карамельная корочка, свежие ягоды", price: 420,  emoji: "🍮", grad: "#6b5420, #2e2410" },
+
+      { id: 7, cat: "drinks",   name: "Вино Кьянти, бокал",   desc: "Красное сухое, Тоскана, 150 мл", price: 590,  emoji: "🍷", grad: "#5a1a2a, #240a12" },
+      { id: 8, cat: "drinks",   name: "Домашний лимонад",     desc: "Лимон, мята, имбирь, газированная вода, 400 мл", price: 320,  emoji: "🍋", grad: "#5f5a1c, #2a280c" },
+    ];
+
+    // ============================================================
+    // 3. СОСТОЯНИЕ
+    // ============================================================
+    let activeCat = CATEGORIES[0].id;   // активная вкладка
+    let orderType = "delivery";         // "delivery" или "table"
+    const cart = {};                    // { id блюда: количество }
+
+    const $ = (id) => document.getElementById(id);
+    const tabsEl = $("tabs"), menuEl = $("menu"), cartBar = $("cartBar");
+
+    // ============================================================
+    // 4. ОТРИСОВКА
+    // ============================================================
+    function renderTabs() {
+      tabsEl.innerHTML = CATEGORIES.map((c) => {
+        const active = c.id === activeCat;
+        const style = active
+          ? "background: var(--gold); color: #1a1208; border-color: var(--gold);"
+          : "background: transparent; color: var(--muted); border-color: var(--line);";
+        return `<button data-cat="${c.id}" style="${style}"
+          class="shrink-0 px-5 py-2 rounded-full text-sm font-semibold border transition-colors">${c.title}</button>`;
+      }).join("");
+    }
+
+    // Кнопка «Добавить» или счётчик [- N +]
+    function controlsHTML(id) {
+      const qty = cart[id] || 0;
+      if (qty === 0) {
+        return `<button data-action="inc" data-id="${id}"
+          class="w-full rounded-xl py-2 text-sm font-semibold border active:opacity-70"
+          style="border-color: var(--gold); color: var(--gold);">Добавить</button>`;
+      }
+      return `<div class="flex items-center justify-between rounded-xl"
+                   style="background: var(--gold); color: #1a1208;">
+        <button data-action="dec" data-id="${id}" class="w-12 py-2 text-xl font-bold">−</button>
+        <span class="font-bold">${qty}</span>
+        <button data-action="inc" data-id="${id}" class="w-12 py-2 text-xl font-bold">+</button>
+      </div>`;
+    }
+
+    // Карточки блюд выбранной категории (фильтрация на чистом JS)
+    function renderMenu() {
+      menuEl.innerHTML = MENU.filter((d) => d.cat === activeCat).map((d) => `
+        <article class="rounded-2xl overflow-hidden border flex sm:block"
+                 style="background: var(--card); border-color: var(--line);">
+          <div class="w-28 sm:w-full sm:h-36 shrink-0 flex items-center justify-center text-5xl"
+               style="background: linear-gradient(145deg, ${d.grad});">${d.emoji}</div>
+          <div class="p-3.5 flex-1 flex flex-col gap-1">
+            <h3 class="serif text-lg font-semibold leading-tight">${d.name}</h3>
+            <p class="text-xs flex-1" style="color: var(--muted);">${d.desc}</p>
+            <div class="serif text-lg font-bold mt-1" style="color: var(--gold);">${d.price} ₽</div>
+            <div data-controls="${d.id}" class="mt-1">${controlsHTML(d.id)}</div>
+          </div>
+        </article>`).join("");
+    }
+
+    // ============================================================
+    // 5. ЛОГИКА КОРЗИНЫ
+    // ============================================================
+    function getCartItems() {
+      return Object.entries(cart).map(([id, qty]) => {
+        const dish = MENU.find((d) => d.id === Number(id));
+        return { name: dish.name, qty: qty, price: dish.price };
+      });
+    }
+
+    function getTotals() {
+      const items = getCartItems();
+      return {
+        total: items.reduce((s, i) => s + i.qty * i.price, 0),
+        count: items.reduce((s, i) => s + i.qty, 0),
+      };
+    }
+
+    // Панель корзины скрыта, пока она пуста
+    function updateCartBar() {
+      const { total, count } = getTotals();
+      $("cartTotal").textContent = total;
+      $("cartCount").textContent = count;
+      cartBar.classList.toggle("translate-y-full", count === 0);
+    }
+
+    function changeQty(id, delta) {
+      const next = (cart[id] || 0) + delta;
+      if (next <= 0) delete cart[id]; else cart[id] = next;
+
+      // Перерисовываем только блок управления этой карточки
+      const box = menuEl.querySelector(`[data-controls="${id}"]`);
+      if (box) box.innerHTML = controlsHTML(id);
+      updateCartBar();
+
+      if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+      // Если корзина опустела при открытом окне оформления, закрываем его
+      if (Object.keys(cart).length === 0) closeModal();
+    }
+
+    // ============================================================
+    // 6. СОБЫТИЯ: вкладки и кнопки блюд (делегирование)
+    // ============================================================
+    tabsEl.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-cat]");
+      if (!btn) return;
+      activeCat = btn.dataset.cat;
+      renderTabs();
+      renderMenu();
+    });
+
+    menuEl.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      changeQty(Number(btn.dataset.id), btn.dataset.action === "dec" ? -1 : 1);
+    });
+
+    // ============================================================
+    // 7. ОКНО «О ЗАВЕДЕНИИ»
+    // ============================================================
+    $("infoBtn").addEventListener("click", () => $("infoModal").classList.remove("hidden"));
+    $("infoClose").addEventListener("click", () => $("infoModal").classList.add("hidden"));
+    $("infoBackdrop").addEventListener("click", () => $("infoModal").classList.add("hidden"));
+
+    // ============================================================
+    // 8. МОДАЛЬНОЕ ОКНО ОФОРМЛЕНИЯ
+    // ============================================================
+    const modal = $("modal");
+
+    // Заполняем выпадающий список столиков 1–15
+    $("table").innerHTML = Array.from({ length: 15 }, (_, i) =>
+      `<option value="${i + 1}">Столик № ${i + 1}</option>`).join("");
+
+    // Переключение «Доставка» / «В ресторане» и показ нужного поля
+    function setOrderType(type) {
+      orderType = type;
+      document.querySelectorAll(".type-btn").forEach((b) => {
+        const on = b.dataset.type === type;
+        b.style.background = on ? "var(--gold)" : "transparent";
+        b.style.color = on ? "#1a1208" : "var(--muted)";
+      });
+      $("addressBox").classList.toggle("hidden", type !== "delivery");
+      $("tableBox").classList.toggle("hidden", type !== "table");
+      $("formError").classList.add("hidden");
+    }
+    document.querySelectorAll(".type-btn").forEach((b) =>
+      b.addEventListener("click", () => setOrderType(b.dataset.type)));
+
+    function openModal() {
+      $("modalTotal").textContent = getTotals().total;
+      $("formError").classList.add("hidden");
+      setOrderType(orderType);
+      modal.classList.remove("hidden");
+      document.body.style.overflow = "hidden";
+    }
+    function closeModal() {
+      modal.classList.add("hidden");
+      document.body.style.overflow = "";
+    }
+    $("checkoutBtn").addEventListener("click", openModal);
+    $("closeModal").addEventListener("click", closeModal);
+    $("modalBackdrop").addEventListener("click", closeModal);
+
+    // Маска телефона: +7 (900) 123-45-67
+    $("phone").addEventListener("input", (e) => {
+      let d = e.target.value.replace(/\D/g, "");
+      if (d.startsWith("7") || d.startsWith("8")) d = d.slice(1);
+      d = d.slice(0, 10);
+      let out = "+7";
+      if (d.length > 0) out += " (" + d.slice(0, 3);
+      if (d.length >= 3) out += ")";
+      if (d.length > 3) out += " " + d.slice(3, 6);
+      if (d.length > 6) out += "-" + d.slice(6, 8);
+      if (d.length > 8) out += "-" + d.slice(8, 10);
+      e.target.value = d.length ? out : "";
+    });
+
+    // ============================================================
+    // 9. ОТПРАВКА ЗАКАЗА В БОТА
+    // ============================================================
+    $("orderForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const name = $("name").value.trim();
+      const phone = $("phone").value.trim();
+      const target = orderType === "delivery" ? $("address").value.trim() : $("table").value;
+
+      // Валидация
+      let error = "";
+      if (name.length < 2) error = "Введите имя";
+      else if (phone.replace(/\D/g, "").length !== 11) error = "Введите телефон полностью";
+      else if (orderType === "delivery" && target.length < 5) error = "Укажите адрес доставки";
+
+      if (error) {
+        $("formError").textContent = error;
+        $("formError").classList.remove("hidden");
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("error");
+        return;
+      }
+
+      // Итоговый объект заказа
+      const orderData = {
+        items: getCartItems(),
+        total_price: getTotals().total,
+        name: name,
+        phone: phone,
+        order_type: orderType,   // "delivery" или "table"
+        target: target,          // адрес или номер столика
+      };
+
+      // Вне Telegram (тест в браузере) sendData недоступен: выводим в консоль
+      if (!tg.initData) {
+        console.log("Заказ (тестовый режим):", orderData);
+        alert("Открыто вне Telegram. Данные заказа выведены в консоль.");
+        return;
+      }
+
+      tg.sendData(JSON.stringify(orderData)); // передаём данные боту
+      tg.close();                             // закрываем Mini App
+    });
+
+    // ============================================================
+    // 10. СТАРТ
+    // ============================================================
+    renderTabs();
+    renderMenu();
+    updateCartBar();
+  </script>
+</body>
+</html>

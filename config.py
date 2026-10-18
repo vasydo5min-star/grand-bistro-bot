@@ -5,7 +5,7 @@
 import os
 
 # Токен бота от @BotFather
-TOKEN = os.getenv("TOKEN", "YOUR_BOT_TOKEN_HERE")
+TOKEN = "8835589329:AAHaCjR4OSjz4PrsR0uKM83Nz5iF5pVHg_U"
 
 # Telegram ID администратора (получает карточки новых заказов)
 ADMIN_ID = int(os.getenv("ADMIN_ID", "123456789"))
